@@ -2,6 +2,8 @@ import os
 import base64
 from io import BytesIO
 from urllib.parse import quote
+import json
+import requests
 
 import streamlit as st
 from PIL import Image
