@@ -350,13 +350,13 @@ def image_bytes_to_base64(image_bytes):
 
 
 def generate_need_from_image(image_bytes):
-    client = get_dashscope_client()
-    if client is None:
+    api_key = os.getenv("DASHSCOPE_API_KEY", "").strip()
+    if not api_key:
         raise ValueError("未检测到 DASHSCOPE_API_KEY，请先配置阿里云百炼 API Key。")
 
     image_b64 = image_bytes_to_base64(image_bytes)
-    prompt = """
-你是资深产品设计研究助手。
+
+    prompt = """你是资深产品设计研究助手。
 请根据这张原型图 / 界面图，输出一段适合设计研究使用的需求文案。
 
 要求：
@@ -367,19 +367,43 @@ def generate_need_from_image(image_bytes):
 5. 要说明适合往哪些方向搜参考
 6. 这段文案将直接填入“需求描述”输入框
 """
-    resp = client.chat.completions.create(
-        model="qwen-vl-plus",
-        messages=[{
-            "role": "user",
-            "content": [
-                {"type": "text", "text": prompt},
-                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}}
-            ]
-        }],
-        temperature=0.4
-    )
-    return resp.choices[0].message.content.strip()
 
+    url = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json; charset=utf-8",
+    }
+
+    payload = {
+        "model": "qwen-vl-plus",
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}},
+                ],
+            }
+        ],
+        "temperature": 0.4,
+    }
+
+    response = requests.post(
+        url,
+        headers=headers,
+        data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+        timeout=120,
+    )
+
+    if response.status_code != 200:
+        raise ValueError(f"识图请求失败：{response.status_code} - {response.text}")
+
+    result = response.json()
+
+    try:
+        return result["choices"][0]["message"]["content"].strip()
+    except Exception:
+        raise ValueError(f"识图返回异常：{result}")
 
 def analyze_need(text: str):
     text_lower = text.lower().strip()
