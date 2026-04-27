@@ -5,7 +5,6 @@ from urllib.parse import quote
 
 import streamlit as st
 from PIL import Image
-from playwright.sync_api import sync_playwright
 from openai import OpenAI
 
 
@@ -574,90 +573,7 @@ def generate_design_advice(need_text: str, keywords: list[str], platform_ranking
 
 
 def search_behance_cards(keyword: str, limit: int = 9):
-    search_url = f"https://www.behance.net/search/projects?search={quote(keyword)}"
-    save_dir = "behance_shots_v4"
-    os.makedirs(save_dir, exist_ok=True)
-
-    items = []
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        page = browser.new_page(viewport={"width": 1500, "height": 2200})
-        page.goto(search_url, wait_until="networkidle", timeout=60000)
-        page.wait_for_timeout(2500)
-
-        for text in ["Accept", "接受", "Close", "关闭", "Not now", "以后再说"]:
-            try:
-                page.get_by_text(text, exact=False).first.click(timeout=400)
-            except Exception:
-                pass
-
-        page.wait_for_timeout(1000)
-        links = page.locator("a[href*='/gallery/']")
-        count = links.count()
-        seen = set()
-        idx = 0
-
-        for i in range(count):
-            if idx >= limit:
-                break
-
-            link = links.nth(i)
-            try:
-                if not link.is_visible():
-                    continue
-            except Exception:
-                continue
-
-            try:
-                href = link.get_attribute("href")
-            except Exception:
-                href = None
-
-            if not href:
-                continue
-
-            if href.startswith("/"):
-                href = f"https://www.behance.net{href}"
-
-            if href in seen:
-                continue
-            seen.add(href)
-
-            title = None
-            try:
-                title = link.get_attribute("title")
-            except Exception:
-                pass
-
-            if not title:
-                try:
-                    txt = link.inner_text(timeout=800).strip()
-                    if txt:
-                        title = txt.split("\\n")[0].strip()
-                except Exception:
-                    pass
-
-            if not title:
-                title = f"Behance Result {idx + 1}"
-
-            shot_path = os.path.join(save_dir, f"card_{idx + 1}.png")
-            try:
-                link.screenshot(path=shot_path)
-            except Exception:
-                page.screenshot(path=shot_path, full_page=False)
-
-            items.append({
-                "title": title,
-                "href": href,
-                "image": shot_path
-            })
-            idx += 1
-
-        browser.close()
-
-    return items
-
-
+    return []
 def fill_keyword(kw):
     st.session_state.search_keyword = kw
 
